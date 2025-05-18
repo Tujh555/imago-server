@@ -1,10 +1,48 @@
 package io.tujh.profile
 
+import io.ktor.http.*
+import io.ktor.http.content.*
 import io.ktor.server.application.*
+import io.ktor.server.auth.*
+import io.ktor.server.http.content.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
+import io.tujh.common.respondRes
+import io.tujh.common.withUser
 import io.tujh.configurator.Configurator
 
 class ProfileConfigurator(private val application: Application) : Configurator {
-    override fun configure() {
+    private val service = ProfileService()
 
+    override fun configure() {
+        application.routing {
+            staticFiles("/${service.folder.name}", service.folder)
+
+            authenticate {
+                route("user") {
+                    post("/avatar") {
+                        call.withUser { user ->
+                            receiveMultipart().forEachPart { part ->
+                                if (part is PartData.FileItem) {
+                                    val response = service.loadAvatar(user, part.provider())
+                                    respondRes(response)
+                                }
+
+                                part.dispose()
+                            }
+                        }
+                    }
+
+                    patch("/name") {
+                        call.withUser { user ->
+                            val name = receive<String>()
+                            service.updateName(user, name)
+                            respond(HttpStatusCode.OK)
+                        }
+                    }
+                }
+            }
+        }
     }
 }
