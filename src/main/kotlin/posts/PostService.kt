@@ -1,7 +1,7 @@
 package io.tujh.posts
 
 import common.Response
-import io.ktor.http.*
+import common.success
 import io.ktor.utils.io.*
 import io.tujh.auth.database.Users
 import io.tujh.common.query
@@ -10,30 +10,36 @@ import io.tujh.models.Comment
 import io.tujh.models.Post
 import io.tujh.models.PostImage
 import io.tujh.models.User
-import kotlinx.coroutines.*
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import java.time.Instant
-import java.util.UUID
-import kotlin.random.Random
-import kotlin.system.measureTimeMillis
+import java.util.*
 
 class PostService {
     private val writeImage = WriteImage("avatars")
     val folder = writeImage.folder
 
-    suspend fun resolveAll(limit: Int, cursor: Instant) = Posts.resolvePosts(limit) { Posts.createdAt less cursor }
-
-    suspend fun resolveFor(user: User, limit: Int, cursor: Instant): List<Post> {
-        val userId = UUID.fromString(user.id)
-        return Posts.resolvePosts(limit) { (Posts.createdAt less cursor) and (Posts.authorId eq userId) }
+    suspend fun resolveAll(limit: Int, cursor: Instant) = success {
+        Posts.resolvePosts(limit) { Posts.createdAt less cursor }
     }
 
-    suspend fun resolveFavorites(user: User, limit: Int, cursor: Instant): List<Post> {
+    suspend fun resolveFor(user: User, limit: Int, cursor: Instant): Response<List<Post>> {
+        val userId = UUID.fromString(user.id)
+        return success {
+            Posts.resolvePosts(limit) { (Posts.createdAt less cursor) and (Posts.authorId eq userId) }
+        }
+    }
+
+    suspend fun resolveFavorites(user: User, limit: Int, cursor: Instant): Response<List<Post>> {
         val userId = UUID.fromString(user.id)
 
-        return (Favorites innerJoin Posts innerJoin Users).resolvePosts(limit, Favorites.dateAdded) {
-            (Favorites.userId eq userId) and (Posts.createdAt less cursor)
+        return success {
+            (Favorites innerJoin Posts innerJoin Users).resolvePosts(limit, Favorites.dateAdded) {
+                (Favorites.userId eq userId) and (Posts.createdAt less cursor)
+            }
         }
     }
 
@@ -96,37 +102,40 @@ class PostService {
         FavoriteResponse(inFavorites)
     }
 
-    suspend fun getComments(postId: String, limit: Int, cursor: Instant): List<Comment> = query {
+    suspend fun getComments(postId: String, limit: Int, cursor: Instant): Response<List<Comment>> = query {
         val postUid = UUID.fromString(postId)
 
-        Comments
-            .selectAll()
-            .orderBy(Comments.createdAt, SortOrder.DESC)
-            .where { (Comments.postId eq postUid) and (Comments.createdAt less cursor) }
-            .map { comment ->
-                val author = Users
-                    .selectAll()
-                    .where { Users.id eq comment[Comments.authorId] }
-                    .map { row ->
-                        User(
-                            id = row[Users.id].toString(),
-                            avatar = row[Users.avatar],
-                            name = row[Users.name],
-                            email = row[Users.email]
-                        )
-                    }
-                    .first()
+        success {
+            Comments
+                .selectAll()
+                .orderBy(Comments.createdAt, SortOrder.DESC)
+                .where { (Comments.postId eq postUid) and (Comments.createdAt less cursor) }
+                .limit(limit)
+                .map { comment ->
+                    val author = Users
+                        .selectAll()
+                        .where { Users.id eq comment[Comments.authorId] }
+                        .map { row ->
+                            User(
+                                id = row[Users.id].toString(),
+                                avatar = row[Users.avatar],
+                                name = row[Users.name],
+                                email = row[Users.email]
+                            )
+                        }
+                        .first()
 
-                Comment(
-                    id = comment[Comments.id].toString(),
-                    author = author,
-                    createdAt = comment[Comments.createdAt].toString(),
-                    text = comment[Comments.text]
-                )
-            }
+                    Comment(
+                        id = comment[Comments.id].toString(),
+                        author = author,
+                        createdAt = comment[Comments.createdAt].toString(),
+                        text = comment[Comments.text]
+                    )
+                }
+        }
     }
 
-    suspend fun addComment(user: User, idPost: String, text: String): Comment = query {
+    suspend fun addComment(user: User, idPost: String, text: String): Response<Comment> = query {
         val userId = UUID.fromString(user.id)
         val postUId = UUID.fromString(idPost)
 
@@ -138,12 +147,14 @@ class PostService {
                 it[Comments.text] = text
             }
             .let {
-                Comment(
-                    id = it[Comments.id].toString(),
-                    author = user,
-                    createdAt = it[Comments.createdAt].toString(),
-                    text = it[Comments.text].toString()
-                )
+                success {
+                    Comment(
+                        id = it[Comments.id].toString(),
+                        author = user,
+                        createdAt = it[Comments.createdAt].toString(),
+                        text = it[Comments.text].toString()
+                    )
+                }
             }
     }
 
