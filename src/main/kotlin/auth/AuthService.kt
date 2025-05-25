@@ -18,7 +18,7 @@ class AuthService {
         if (resolveUser(request.email) != null) {
             return@query _error(401)
         }
-        val (user, token) = insertNew(request.email, request.password, request.name)
+        val (user, token) = insertNew(request.email, request.password, request.name.orEmpty())
         success { AuthResponse(user, token) }
     }
 

@@ -8,5 +8,5 @@ data class AuthRequest(
     @SerializedName("password")
     val password: String,
     @SerializedName("name")
-    val name: String
+    val name: String?
 )

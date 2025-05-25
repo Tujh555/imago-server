@@ -23,13 +23,7 @@ fun Application.module() {
         password = "",
     )
     transaction(database) {
-        try {
-            println("--> try to create db")
-            SchemaUtils.create(Posts, Favorites, Comments, Users)
-        } catch (e: Exception) {
-            e.printStackTrace()
-            println(e.message)
-        }
+        SchemaUtils.create(Users, Posts, Comments, Favorites)
     }
     DelegateConfigurator(this, configurators).configure()
 }

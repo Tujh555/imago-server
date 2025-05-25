@@ -12,7 +12,7 @@ object Posts : Table() {
     val createdAt = instant("created_at")
     val images = images("images")
 
-    override val primaryKey = PrimaryKey(Comments.id)
+    override val primaryKey = PrimaryKey(id)
 }
 
 object Comments : Table() {
