@@ -86,7 +86,10 @@ class PostsConfigurator(private val application: Application) : Configurator {
                                 val files = mutableListOf<ByteReadChannel>()
                                 receiveMultipart().forEachPart { part ->
                                     when (part) {
-                                        is PartData.FileItem -> files.add(part.provider())
+                                        is PartData.FileItem -> {
+                                            println("file item ${part.name} file name = ${part.originalFileName}")
+                                            files.add(part.provider())
+                                        }
                                         is PartData.FormItem -> if (part.name == "title") {
                                             title = part.value
                                         } else if (part.name == "sizes") {
@@ -99,7 +102,9 @@ class PostsConfigurator(private val application: Application) : Configurator {
                                 }
 
                                 service.add(user, title, sizes, files)
+                                respond(HttpStatusCode.OK)
                             } catch (e: Exception) {
+                                e.printStackTrace()
                                 respond(HttpStatusCode.BadRequest)
                             }
                         }

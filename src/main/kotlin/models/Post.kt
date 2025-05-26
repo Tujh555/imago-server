@@ -13,7 +13,7 @@ class Post(
     val createdAt: String,
 )
 
-class PostImage(
+data class PostImage(
     @SerializedName("url")
     val url: String,
     @SerializedName("original_width")

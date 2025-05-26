@@ -18,6 +18,7 @@ class WriteImage(folderName: String) {
     suspend fun resized(source: ByteReadChannel, width: Int = 300, height: Int = 300): String? {
         val target = folder.random()
 
+        println("write resized to $target with width = $width; height = $height")
         return try {
             withContext(Dispatchers.IO) {
                 val image = ImageIO.read(source.toInputStream(currentCoroutineContext().job))
@@ -25,6 +26,7 @@ class WriteImage(folderName: String) {
                 url(target.path)
             }
         } catch (e: Exception) {
+            e.printStackTrace()
             target.delete()
             null
         }
@@ -32,13 +34,17 @@ class WriteImage(folderName: String) {
 
     suspend fun original(source: ByteReadChannel): String? {
         val target = folder.random()
-
         return try {
             withContext(Dispatchers.IO) {
-                source.copyAndClose(target.writeChannel())
+                ImageIO
+                    .read(source.toInputStream(currentCoroutineContext().job))
+                    .let { Thumbnails.of(it) }
+                    .toFile(target)
+
                 url(target.path)
             }
         } catch (e: Exception){
+            e.printStackTrace()
             target.delete()
             null
         }

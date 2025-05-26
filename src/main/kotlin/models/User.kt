@@ -2,7 +2,7 @@ package io.tujh.models
 
 import com.google.gson.annotations.SerializedName
 
-class User(
+data class User(
     @SerializedName("id")
     val id: String,
     @SerializedName("avatar")

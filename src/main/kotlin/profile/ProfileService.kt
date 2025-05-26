@@ -16,7 +16,7 @@ class ProfileService {
     val folder = writeImage.folder
 
     suspend fun loadAvatar(user: User, source: ByteReadChannel): Response<AvatarUpdateResponse> {
-        val url = writeImage.resized(source) ?: return _error(500)
+        val url = writeImage.resized(source).also { println("resized = $it") } ?: return _error(500)
         val id = UUID.fromString(user.id)
         query {
             Users.update(where = { Users.id eq id }) { it[avatar] = url }

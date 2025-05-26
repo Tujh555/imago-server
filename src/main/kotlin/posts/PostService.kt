@@ -19,7 +19,7 @@ import java.time.Instant
 import java.util.*
 
 class PostService {
-    private val writeImage = WriteImage("avatars")
+    private val writeImage = WriteImage("posts")
     val folder = writeImage.folder
 
     suspend fun resolveAll(limit: Int, cursor: Instant) = success {
@@ -44,19 +44,18 @@ class PostService {
     }
 
     suspend fun add(user: User, title: String, sizes: String, sources: List<ByteReadChannel>) {
-        val files = coroutineScope {
-            sources
-                .map { source -> async { writeImage.original(source)!! } }
-                .awaitAll()
-        }
         val originalSizes = sizes.split(" ").map {
             val (w, h) = it.split(",").map(String::toInt)
             w to h
         }
-        val postImages = originalSizes.mapIndexed { index, (width, height) ->
-            val url = files[index]
-            PostImage(url, width, height)
+
+        val postImages = originalSizes.zip(sources).map { (size, source) ->
+            val url = writeImage.resized(source, size.first, size.second)
+            PostImage(url!!, size.first, size.second)
         }
+
+        println("post images = $postImages")
+
         query {
             val userId = UUID.fromString(user.id)
 
