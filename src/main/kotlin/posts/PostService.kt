@@ -34,27 +34,28 @@ class PostService {
     }
 
     suspend fun resolveFavorites(user: User, limit: Int, cursor: Instant): Response<List<Post>> {
-        val userId = UUID.fromString(user.id)
+        val userUid = UUID.fromString(user.id)
 
         return success {
-            (Favorites innerJoin Posts innerJoin Users).resolvePosts(limit, Favorites.dateAdded) {
-                (Favorites.userId eq userId) and (Posts.createdAt less cursor)
+            query {
+                Favorites
+                    .join(Posts, JoinType.INNER, Favorites.postId, Posts.id) { Favorites.userId eq userUid }
+                    .resolvePosts(limit, Favorites.dateAdded) { Posts.createdAt less cursor }
             }
         }
     }
 
-    suspend fun add(user: User, title: String, sizes: String, sources: List<ByteReadChannel>) {
+    suspend fun write(source: ByteReadChannel): String = writeImage.original(source)!!
+
+    suspend fun add(user: User, title: String, sizes: String, urls: List<String>) {
         val originalSizes = sizes.split(" ").map {
             val (w, h) = it.split(",").map(String::toInt)
             w to h
         }
 
-        val postImages = originalSizes.zip(sources).map { (size, source) ->
-            val url = writeImage.resized(source, size.first, size.second)
-            PostImage(url!!, size.first, size.second)
+        val postImages = originalSizes.zip(urls).map { (size, url) ->
+            PostImage(url, size.first, size.second)
         }
-
-        println("post images = $postImages")
 
         query {
             val userId = UUID.fromString(user.id)
@@ -137,12 +138,13 @@ class PostService {
     suspend fun addComment(user: User, idPost: String, text: String): Response<Comment> = query {
         val userId = UUID.fromString(user.id)
         val postUId = UUID.fromString(idPost)
+        val date = Instant.now()
 
         Comments
             .insert {
                 it[postId] = postUId
                 it[authorId] = userId
-                it[createdAt] = Instant.now()
+                it[createdAt] = date
                 it[Comments.text] = text
             }
             .let {
@@ -150,7 +152,7 @@ class PostService {
                     Comment(
                         id = it[Comments.id].toString(),
                         author = user,
-                        createdAt = it[Comments.createdAt].toString(),
+                        createdAt = date.toString(),
                         text = it[Comments.text].toString()
                     )
                 }

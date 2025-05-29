@@ -9,6 +9,7 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.util.*
+import io.ktor.util.*
 import io.ktor.utils.io.*
 import io.tujh.common.respondRes
 import io.tujh.common.withUser
@@ -57,8 +58,9 @@ class PostsConfigurator(private val application: Application) : Configurator {
                         get("/check") {
                             call.withUser { user ->
                                 try {
-                                    val postId = pathParameters.getOrFail("id")
-                                    service.checkInFavorites(user, postId)
+                                    println("check parameters = ${queryParameters.toMap()}")
+                                    val postId = queryParameters.getOrFail("id")
+                                    call.respond(service.checkInFavorites(user, postId))
                                 } catch (e: Exception) {
                                     call.respond(HttpStatusCode.BadRequest)
                                 }
@@ -72,6 +74,7 @@ class PostsConfigurator(private val application: Application) : Configurator {
                                     val cursor = Instant.parse(queryParameters.getOrFail("cursor"))
                                     respondRes(service.resolveFavorites(user, limit, cursor))
                                 } catch (e: Exception) {
+                                    e.printStackTrace()
                                     respond(HttpStatusCode.BadRequest)
                                 }
                             }
@@ -83,25 +86,31 @@ class PostsConfigurator(private val application: Application) : Configurator {
                             try {
                                 var title = ""
                                 var sizes = ""
-                                val files = mutableListOf<ByteReadChannel>()
+                                val urls = mutableListOf<String>()
+
                                 receiveMultipart().forEachPart { part ->
                                     when (part) {
                                         is PartData.FileItem -> {
-                                            println("file item ${part.name} file name = ${part.originalFileName}")
-                                            files.add(part.provider())
+                                            println("--> file item ${part.name}\n file name = ${part.originalFileName}\n${part.name}\n" +
+                                                    "${part.contentType}\n" +
+                                                    "headers = ${part.headers}")
+                                            val url = service.write(part.provider())
+                                            urls.add(url)
                                         }
-                                        is PartData.FormItem -> if (part.name == "title") {
-                                            title = part.value
-                                        } else if (part.name == "sizes") {
-                                            sizes = part.value
+                                        is PartData.FormItem -> {
+                                            when (part.name) {
+                                                "title" -> title = part.value
+                                                "sizes" -> sizes = part.value
+                                            }
                                         }
-
-                                        is PartData.BinaryChannelItem,
-                                        is PartData.BinaryItem -> part.dispose()
+                                        else -> Unit
                                     }
+
+                                    part.dispose()
                                 }
 
-                                service.add(user, title, sizes, files)
+                                service.add(user, title, sizes, urls)
+
                                 respond(HttpStatusCode.OK)
                             } catch (e: Exception) {
                                 e.printStackTrace()

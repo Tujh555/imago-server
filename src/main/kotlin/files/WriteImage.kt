@@ -36,11 +36,7 @@ class WriteImage(folderName: String) {
         val target = folder.random()
         return try {
             withContext(Dispatchers.IO) {
-                ImageIO
-                    .read(source.toInputStream(currentCoroutineContext().job))
-                    .let { Thumbnails.of(it) }
-                    .toFile(target)
-
+                source.copyAndClose(target.writeChannel())
                 url(target.path)
             }
         } catch (e: Exception){
