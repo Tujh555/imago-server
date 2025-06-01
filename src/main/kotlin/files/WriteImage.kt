@@ -18,7 +18,6 @@ class WriteImage(folderName: String) {
     suspend fun resized(source: ByteReadChannel, width: Int = 300, height: Int = 300): String? {
         val target = folder.random()
 
-        println("write resized to $target with width = $width; height = $height")
         return try {
             withContext(Dispatchers.IO) {
                 val image = ImageIO.read(source.toInputStream(currentCoroutineContext().job))
@@ -56,5 +55,5 @@ class WriteImage(folderName: String) {
         }
     }
 
-    private fun url(path: String) = "http://10.0.2.2:8080/$path"
+    private fun url(path: String) = "http://0.0.0.0:8080/$path"
 }

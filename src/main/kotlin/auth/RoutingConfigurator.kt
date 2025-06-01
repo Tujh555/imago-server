@@ -16,14 +16,12 @@ class RoutingConfigurator(private val application: Application) : Configurator {
                 post("/login") {
                     val request = call.receive<AuthRequest>()
                     val response = service.login(request)
-                    println("login:\nrequest = $request\nresponse = $response")
                     call.respondRes(response)
                 }
 
                 post("/register") {
                     val request = call.receive<AuthRequest>()
                     val response = service.register(request)
-                    println("register:\nrequest = $request\nresponse = $response")
                     call.respondRes(response)
                 }
             }

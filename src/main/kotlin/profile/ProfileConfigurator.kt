@@ -22,11 +22,8 @@ class ProfileConfigurator(private val application: Application) : Configurator {
             authenticate {
                 route("user") {
                     post("/avatar") {
-                        println("--> user/avatar")
                         call.withUser { user ->
-                            println("--> user = $user")
                             receiveMultipart().forEachPart { part ->
-                                println("part = $part\n${part.name}\n${part.contentType}\nheaders = ${part.headers}")
                                 if (part is PartData.FileItem) {
                                     val response = service.loadAvatar(user, part.provider())
                                     respondRes(response)

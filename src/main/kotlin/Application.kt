@@ -1,5 +1,7 @@
 package io.tujh
 
+import com.zaxxer.hikari.HikariConfig
+import com.zaxxer.hikari.HikariDataSource
 import io.ktor.server.application.*
 import io.ktor.server.plugins.calllogging.*
 import io.ktor.server.request.*
@@ -19,12 +21,12 @@ fun main(args: Array<String>) {
 }
 
 fun Application.module() {
-    val database = Database.connect(
-        url = "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1",
-        user = "root",
-        driver = "org.h2.Driver",
-        password = "",
-    )
+    val url = "jdbc:postgresql://localhost:5433/erusinov"
+    val user = "erusinov"
+    val driver = "org.postgresql.Driver"
+    val password = ""
+    val datasource = createHikariDataSource(url, user, driver, password)
+    val database = Database.connect(datasource)
     transaction(database) {
         SchemaUtils.create(Users, Posts, Comments, Favorites)
     }
@@ -33,4 +35,22 @@ fun Application.module() {
     }
 
     DelegateConfigurator (this, configurators).configure()
+}
+
+fun createHikariDataSource(
+    url: String,
+    user: String,
+    driver: String,
+    password: String
+): HikariDataSource {
+    val config = HikariConfig()
+    config.driverClassName = driver
+    config.jdbcUrl = url
+    config.username = user
+    config.password = password
+    config.maximumPoolSize = 10
+    config.isAutoCommit = false
+    config.transactionIsolation = "TRANSACTION_REPEATABLE_READ" // Уровень изоляции
+    config.validate()
+    return HikariDataSource(config)
 }

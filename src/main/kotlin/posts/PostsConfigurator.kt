@@ -58,7 +58,6 @@ class PostsConfigurator(private val application: Application) : Configurator {
                         get("/check") {
                             call.withUser { user ->
                                 try {
-                                    println("check parameters = ${queryParameters.toMap()}")
                                     val postId = queryParameters.getOrFail("id")
                                     call.respond(service.checkInFavorites(user, postId))
                                 } catch (e: Exception) {
@@ -91,9 +90,6 @@ class PostsConfigurator(private val application: Application) : Configurator {
                                 receiveMultipart().forEachPart { part ->
                                     when (part) {
                                         is PartData.FileItem -> {
-                                            println("--> file item ${part.name}\n file name = ${part.originalFileName}\n${part.name}\n" +
-                                                    "${part.contentType}\n" +
-                                                    "headers = ${part.headers}")
                                             val url = service.write(part.provider())
                                             urls.add(url)
                                         }
